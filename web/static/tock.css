@@ -1,0 +1,176 @@
+:root {
+  --paper: #efe6d4;
+  --card: #fffaf1;
+  --ink: #1b1712;
+  --muted: #5e564b;
+  --line: #1b1712;
+  --up: #1f7a4d;
+  --up-bg: #e4f5ea;
+  --down: #9f2d1c;
+  --down-bg: #fde7e2;
+  --grace: #8a5a00;
+  --grace-bg: #fff0d2;
+  --new: #1d4e89;
+  --new-bg: #e6f0fa;
+  --paused: #5c564c;
+  --paused-bg: #ece7de;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --shadow: 3px 3px 0 var(--line);
+}
+
+* { box-sizing: border-box; }
+[x-cloak] { display: none !important; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(27, 23, 18, 0.04), transparent 180px),
+    var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.top, main, footer { width: min(1040px, calc(100% - 32px)); margin: 0 auto; }
+.top {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  padding: 28px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+.mark {
+  font-style: italic;
+  font-size: 40px;
+  line-height: 1;
+  color: inherit;
+  text-decoration: none;
+}
+.tag, .muted, .abs, footer { color: var(--muted); }
+.tag { margin: 0; font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; }
+nav { display: flex; gap: 14px; margin-left: auto; font-family: var(--mono); font-size: 14px; }
+nav a { color: inherit; text-decoration: none; }
+nav a[aria-current="page"] { border-bottom: 2px solid var(--ink); }
+.logout { margin: 0; }
+button, .button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+button, .button {
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 8px 14px;
+  text-decoration: none;
+  cursor: pointer;
+}
+button.primary, .button.primary { background: var(--ink); color: var(--paper); }
+button.danger { color: var(--down); }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--new);
+  outline-offset: 2px;
+}
+.banner, .note, .error {
+  width: min(1040px, calc(100% - 32px));
+  margin: 16px auto;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: var(--grace-bg);
+  font-family: var(--mono);
+  font-size: 14px;
+}
+.error { background: var(--down-bg); margin-left: 0; margin-right: 0; width: auto; }
+main { padding: 28px 0 48px; }
+h1 { font-size: 42px; line-height: 1.05; margin: 0 0 8px; font-weight: 500; }
+h2 { font-size: 22px; margin: 0 0 12px; font-weight: 500; }
+h3 { font-family: var(--mono); font-size: 13px; font-weight: 400; letter-spacing: 0.04em; text-transform: uppercase; }
+.lede { margin: 0; max-width: 62ch; }
+.page-head, .row-actions, .pair { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.page-head { margin-bottom: 22px; align-items: flex-end; }
+.page-head.tight { margin: 0 0 12px; align-items: center; }
+.pair > div { flex: 1; min-width: 140px; }
+.stack { display: grid; gap: 8px; }
+label { font-family: var(--mono); font-size: 13px; }
+.check { display: flex; gap: 8px; align-items: center; }
+input, select, textarea {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+}
+textarea { resize: vertical; }
+.narrow { max-width: 560px; }
+.jobs { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.job {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "pill name" "pill meta";
+  gap: 2px 12px;
+  align-items: center;
+  padding: 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  color: inherit;
+  text-decoration: none;
+}
+.job .pill { grid-area: pill; }
+.job-name { grid-area: name; font-size: 22px; }
+.job-meta { grid-area: meta; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.pill {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+.status-up { background: var(--up-bg); color: var(--up); }
+.status-down { background: var(--down-bg); color: var(--down); }
+.status-grace { background: var(--grace-bg); color: var(--grace); }
+.status-new { background: var(--new-bg); color: var(--new); }
+.status-paused { background: var(--paused-bg); color: var(--paused); }
+a.job.status-up { box-shadow: 3px 3px 0 var(--up); }
+a.job.status-down { box-shadow: 3px 3px 0 var(--down); }
+a.job.status-grace { box-shadow: 3px 3px 0 var(--grace); }
+a.job.status-new { box-shadow: 3px 3px 0 var(--new); }
+a.job.status-paused { box-shadow: 3px 3px 0 var(--paused); }
+.steps { max-width: 68ch; padding-left: 1.2em; }
+.steps li { margin: 0 0 10px; }
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin: 0 0 16px;
+}
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+pre, .mono, .url { font-family: var(--mono); font-size: 14px; }
+pre {
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 10px;
+  margin: 0;
+}
+table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+th { text-align: left; font-weight: 500; color: var(--muted); }
+td, th { border-top: 1px solid rgba(27, 23, 18, 0.15); padding: 8px 6px 8px 0; vertical-align: top; }
+.abs { display: block; font-size: 11px; }
+.clip { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+footer { padding-bottom: 32px; font-family: var(--mono); font-size: 12px; }
+
+@media (max-width: 720px) {
+  .split { grid-template-columns: 1fr; }
+  .top { flex-wrap: wrap; }
+  nav { margin-left: 0; }
+  h1 { font-size: 34px; }
+  .job { grid-template-columns: 1fr; grid-template-areas: "pill" "name" "meta"; }
+}

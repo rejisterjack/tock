@@ -1,0 +1,88 @@
+{{define "check_detail"}}{{template "head" .}}
+  <article>
+    <div class="page-head">
+      <div>
+        <p class="pill status-{{.Check.DisplayStatus}}">{{.Check.DisplayStatus}}</p>
+        <h1>{{.Check.Name}}</h1>
+        <p class="lede">Every {{.Check.PeriodLabel}}, with {{.Check.GraceLabel}} of grace. Stored status is {{.Check.Status}}{{if .Check.Paused}}, paused{{end}}.</p>
+      </div>
+      {{if not .Demo}}
+      <div class="row-actions">
+        <a class="button" href="/checks/{{.Check.ID}}/edit">Edit</a>
+        {{if .Check.Paused}}
+        <form method="post" action="/checks/{{.Check.ID}}/resume">
+          <input type="hidden" name="csrf" value="{{.CSRF}}">
+          <button type="submit">Resume</button>
+        </form>
+        {{else}}
+        <form method="post" action="/checks/{{.Check.ID}}/pause">
+          <input type="hidden" name="csrf" value="{{.CSRF}}">
+          <button type="submit">Pause</button>
+        </form>
+        {{end}}
+        <form method="post" action="/checks/{{.Check.ID}}/delete" x-data @submit="if (!confirm('Delete this check and its history?')) $event.preventDefault()">
+          <input type="hidden" name="csrf" value="{{.CSRF}}">
+          <button type="submit" class="danger">Delete</button>
+        </form>
+      </div>
+      {{end}}
+    </div>
+
+    {{if .Check.Paused}}
+    <p class="note">Paused checks still record pings and do not alert. Resume judges the schedule from the last ping.</p>
+    {{end}}
+
+    <section class="panel">
+      <h2>Ping URL</h2>
+      {{if .Demo}}<p class="note">This demo accepts the request and does not record it.</p>{{end}}
+      <label class="sr" for="ping-url">Ping URL</label>
+      <input id="ping-url" class="url" type="text" readonly value="{{.Check.PingURL}}">
+      <div class="row-actions">
+        <button type="button" class="primary" x-data="copyButton" data-copy="{{.Check.PingURL}}" @click="copy()">
+          <span x-show="!copied">Copy URL</span>
+          <span x-show="copied" x-cloak>Copied</span>
+        </button>
+      </div>
+      <h3>Add this to the end of the job</h3>
+      <pre>{{.Check.Curl}}</pre>
+    </section>
+
+    <div class="split">
+      <section class="panel">
+        <h2>Pings</h2>
+        {{if not .Pings}}<p class="muted">No pings yet.</p>{{else}}
+        <table>
+          <thead><tr><th>When</th><th>From</th><th>Agent</th></tr></thead>
+          <tbody>
+          {{range .Pings}}
+            <tr>
+              <td><span x-data="agoClock" data-iso="{{iso .ReceivedAt}}" x-text="label"></span><span class="abs">{{utc .ReceivedAt}}</span></td>
+              <td class="mono">{{.RemoteIP}}</td>
+              <td class="clip">{{.UserAgent}}</td>
+            </tr>
+          {{end}}
+          </tbody>
+        </table>
+        {{end}}
+      </section>
+      <section class="panel">
+        <h2>Alerts</h2>
+        {{if not .Alerts}}<p class="muted">No alerts yet.</p>{{else}}
+        <table>
+          <thead><tr><th>When</th><th>Event</th><th>Channel</th><th>Result</th></tr></thead>
+          <tbody>
+          {{range .Alerts}}
+            <tr>
+              <td><span x-data="agoClock" data-iso="{{iso .SentAt}}" x-text="label"></span><span class="abs">{{utc .SentAt}}</span></td>
+              <td>{{.Kind}}</td>
+              <td>{{if .ChannelName}}{{.ChannelName}}{{else}}—{{end}}</td>
+              <td>{{.Status}}{{if .Error}}<span class="abs">{{.Error}}</span>{{end}}</td>
+            </tr>
+          {{end}}
+          </tbody>
+        </table>
+        {{end}}
+      </section>
+    </div>
+  </article>
+{{template "foot" .}}{{end}}

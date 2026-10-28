@@ -1,0 +1,48 @@
+{{define "check_form"}}{{template "head" .}}
+  <section class="narrow">
+    <h1>{{if .Form.Editing}}Edit check{{else}}New check{{end}}</h1>
+    <p class="lede">The period is how often a success ping should arrive. Grace is extra time before Tock calls it down.</p>
+    {{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+    <form method="post" action="{{if .Form.Editing}}/checks/{{.Form.ID}}{{else}}/checks{{end}}" class="stack">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <label for="name">Name</label>
+      <input id="name" name="name" value="{{.Form.Name}}" required maxlength="80" autocomplete="off">
+
+      <div class="pair">
+        <div>
+          <label for="period_value">Expected every</label>
+          <input id="period_value" name="period_value" type="number" min="0" required value="{{.Form.PeriodValue}}">
+        </div>
+        <div>
+          <label for="period_unit">Unit</label>
+          <select id="period_unit" name="period_unit">
+            {{template "units" .Form.PeriodUnit}}
+          </select>
+        </div>
+      </div>
+      <div class="pair">
+        <div>
+          <label for="grace_value">Grace period</label>
+          <input id="grace_value" name="grace_value" type="number" min="0" required value="{{.Form.GraceValue}}">
+        </div>
+        <div>
+          <label for="grace_unit">Unit</label>
+          <select id="grace_unit" name="grace_unit">
+            {{template "units" .Form.GraceUnit}}
+          </select>
+        </div>
+      </div>
+      <div class="row-actions">
+        <button type="submit" class="primary">{{if .Form.Editing}}Save{{else}}Create check{{end}}</button>
+        <a href="{{if .Form.Editing}}/checks/{{.Form.ID}}{{else}}/{{end}}">Cancel</a>
+      </div>
+    </form>
+  </section>
+{{template "foot" .}}{{end}}
+
+{{define "units"}}
+<option value="minutes" {{if eq . "minutes"}}selected{{end}}>minutes</option>
+<option value="hours" {{if eq . "hours"}}selected{{end}}>hours</option>
+<option value="days" {{if eq . "days"}}selected{{end}}>days</option>
+<option value="seconds" {{if eq . "seconds"}}selected{{end}}>seconds</option>
+{{end}}

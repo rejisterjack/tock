@@ -1,0 +1,32 @@
+{{define "checks"}}{{template "head" .}}
+  <div class="page-head">
+    <div>
+      <h1>Jobs</h1>
+      <p class="lede">Each job pings Tock when it succeeds. If the ping is late, Tock alerts you.</p>
+    </div>
+    {{if not .Demo}}<a class="button primary" href="/checks/new">New check</a>{{end}}
+  </div>
+  {{if .Empty}}
+  <ol class="steps">
+    <li><strong>Create a check.</strong> Name it, set how often it should run, and add a grace period so a slightly late job does not page you.</li>
+    <li><strong>Copy the ping URL</strong> Tock generates for that check.</li>
+    <li><strong>Append one line</strong> to the job: <code>curl -fsS https://your-tock/ping/&lt;token&gt;</code></li>
+    <li><strong>Stop the pings</strong> and Tock notifies every enabled channel, once, until the job checks in again.</li>
+  </ol>
+  {{else}}
+  <ul class="jobs">
+    {{range .Checks}}
+    <li>
+      <a class="job status-{{.DisplayStatus}}" href="/checks/{{.ID}}">
+        <span class="pill">{{.DisplayStatus}}</span>
+        <span class="job-name">{{.Name}}</span>
+        <span class="job-meta">
+          {{if .LastPingISO}}last ping <span x-data="agoClock" data-iso="{{.LastPingISO}}" x-text="label"></span>{{else}}no ping yet{{end}}
+          · every {{.PeriodLabel}} · grace {{.GraceLabel}}
+        </span>
+      </a>
+    </li>
+    {{end}}
+  </ul>
+  {{end}}
+{{template "foot" .}}{{end}}

@@ -1,0 +1,88 @@
+{{define "channels"}}{{template "head" .}}
+  <div class="page-head">
+    <div>
+      <h1>Channels</h1>
+      <p class="lede">Every enabled channel receives each down alert and each recovery. SMTP itself is configured with environment variables, not here.</p>
+    </div>
+  </div>
+  {{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+  {{if not .Channels}}
+  <p class="note">No channels yet. Tock will still mark a job down, and the alert history will say that nothing was notified.</p>
+  {{end}}
+
+  {{range .Channels}}
+  <section class="panel">
+    {{if $.Demo}}
+      <h2>{{.Name}} <span class="pill">{{.Kind}}</span> {{if not .Enabled}}<span class="pill">disabled</span>{{end}}</h2>
+      {{if eq .Kind "email"}}<p class="mono">{{.To}}</p>{{end}}
+      {{if eq .Kind "slack"}}<p class="mono">{{.WebhookURL}}</p>{{end}}
+      {{if eq .Kind "webhook"}}<p class="mono">{{.URL}}</p>{{end}}
+    {{else}}
+    <form method="post" action="/channels/{{.ID}}" class="stack">
+      <input type="hidden" name="csrf" value="{{$.CSRF}}">
+      <input type="hidden" name="kind" value="{{.Kind}}">
+      <div class="page-head tight">
+        <h2>{{.Kind}}</h2>
+        <label class="check"><input type="checkbox" name="enabled" value="true" {{if .Enabled}}checked{{end}}> Enabled</label>
+      </div>
+      <label for="name-{{.ID}}">Name</label>
+      <input id="name-{{.ID}}" name="name" value="{{.Name}}" required maxlength="80">
+      {{if eq .Kind "email"}}
+      <label for="to-{{.ID}}">Recipients</label>
+      <input id="to-{{.ID}}" name="to" value="{{.To}}" placeholder="ops@example.com, oncall@example.com">
+      {{end}}
+      {{if eq .Kind "slack"}}
+      <label for="slack-{{.ID}}">Incoming webhook URL</label>
+      <input id="slack-{{.ID}}" name="webhook_url" value="{{.WebhookURL}}">
+      {{end}}
+      {{if eq .Kind "webhook"}}
+      <label for="url-{{.ID}}">URL</label>
+      <input id="url-{{.ID}}" name="url" value="{{.URL}}">
+      <label for="headers-{{.ID}}">Headers</label>
+      <textarea id="headers-{{.ID}}" name="headers" rows="3" placeholder="Authorization: Bearer …">{{.Headers}}</textarea>
+      {{end}}
+      <div class="row-actions">
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>
+    <form method="post" action="/channels/{{.ID}}/delete" x-data @submit="if (!confirm('Delete this channel?')) $event.preventDefault()">
+      <input type="hidden" name="csrf" value="{{$.CSRF}}">
+      <button type="submit" class="danger">Delete</button>
+    </form>
+    {{end}}
+  </section>
+  {{end}}
+
+  {{if not .Demo}}
+  <section class="panel">
+    <h2>Add a channel</h2>
+    <form method="post" action="/channels" class="stack" x-data="{ kind: 'email' }">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <label for="new-name">Name</label>
+      <input id="new-name" name="name" required maxlength="80" placeholder="on-call">
+      <label for="new-kind">Kind</label>
+      <select id="new-kind" name="kind" x-model="kind">
+        <option value="email">Email</option>
+        <option value="slack">Slack</option>
+        <option value="webhook">Webhook</option>
+      </select>
+      <label class="check"><input type="checkbox" name="enabled" value="true" checked> Enabled</label>
+      <div x-show="kind === 'email'">
+        <label for="new-to">Recipients</label>
+        <input id="new-to" name="to" placeholder="ops@example.com">
+      </div>
+      <div x-show="kind === 'slack'" x-cloak>
+        <label for="new-slack">Incoming webhook URL</label>
+        <input id="new-slack" name="webhook_url" placeholder="https://hooks.slack.com/services/…">
+      </div>
+      <div x-show="kind === 'webhook'" x-cloak>
+        <label for="new-url">URL</label>
+        <input id="new-url" name="url" placeholder="https://example.com/tock">
+        <label for="new-headers">Headers</label>
+        <textarea id="new-headers" name="headers" rows="3" placeholder="Authorization: Bearer …"></textarea>
+      </div>
+      <button type="submit" class="primary">Add channel</button>
+    </form>
+  </section>
+  {{end}}
+{{template "foot" .}}{{end}}

@@ -1,0 +1,41 @@
+{{define "head"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{{.Title}} · Tock</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/tock.css">
+</head>
+<body>
+  <header class="top">
+    <a class="mark" href="/">Tock</a>
+    <p class="tag">Dead-man's switch for cron</p>
+    {{if or .Authed .Demo}}
+    <nav>
+      <a href="/" {{if eq .Nav "checks"}}aria-current="page"{{end}}>Jobs</a>
+      <a href="/channels" {{if eq .Nav "channels"}}aria-current="page"{{end}}>Channels</a>
+    </nav>
+    {{end}}
+    {{if .Authed}}
+    <form method="post" action="/logout" class="logout">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button type="submit">Sign out</button>
+    </form>
+    {{end}}
+  </header>
+  {{if .Demo}}
+  <p class="banner">Demo mode. These jobs are simulated, and outbound email, Slack, and webhooks are off.</p>
+  {{end}}
+  <main>
+{{end}}
+
+{{define "foot"}}
+  </main>
+  <footer>Tock {{.Version}}</footer>
+  <script src="/static/tock.js" defer></script>
+  <script src="/static/alpine.min.js" defer></script>
+</body>
+</html>
+{{end}}
