@@ -64,6 +64,8 @@ Cron jobs and scheduled tasks fail silently. A backup or digest can stop running
 - Reliable email alerts depend on proper SMTP setup (operator responsibility)
 - Not full APM, log aggregation, or distributed tracing
 
+**Won't-build (closed):** Full APM, log aggregation, and distributed tracing stay out of scope. Tock is a dead-man's switch only.
+
 ## Deployment
 
 | Mode | Notes |

@@ -68,6 +68,29 @@ docker compose --profile smtp up -d
 
 In `.env` set `TOCK_SMTP_HOST=mailpit`, `TOCK_SMTP_PORT=1025`, and `TOCK_SMTP_FROM=tock@localhost`. Recreate the app and open [http://localhost:8025](http://localhost:8025). Add an email channel whose recipient is any address. Mailpit accepts it.
 
+### Production SMTP runbook (Mailpit → real SMTP)
+
+Use Mailpit only for local proof. For a real deployment, switch process env to your mail provider and re-check delivery once.
+
+1. **Pick transport.** Prefer port `587` with STARTTLS (most providers) or `465` with implicit TLS. Leave `TOCK_SMTP_USER` / `TOCK_SMTP_PASSWORD` empty only if the relay allows unauthenticated submission from your host (rare).
+2. **Set production env** (Compose, systemd, or your host secrets store):
+
+   ```
+   TOCK_SMTP_HOST=smtp.your-provider.example
+   TOCK_SMTP_PORT=587
+   TOCK_SMTP_USER=apikey-or-mailbox
+   TOCK_SMTP_PASSWORD=secret
+   TOCK_SMTP_FROM=tock@your-domain.example
+   ```
+
+3. **Align From with provider rules.** Many providers require `TOCK_SMTP_FROM` to be a verified domain or mailbox. SPF/DKIM/DMARC for that domain must allow the provider's sending hosts.
+4. **Recreate / restart** the Tock process so it picks up the new env. Empty `TOCK_SMTP_HOST` still lets Tock start; email channels then fail at send time.
+5. **Create or keep an email channel** in the dashboard with a real recipient you control.
+6. **Force a down → recover cycle** on a short test check (small period, tiny or zero grace): wait for the down alert, confirm inbox receipt, ping the check URL, confirm the recovery message. Dashboard alert rows should move from `pending` to sent (not stuck `failed`).
+7. **If delivery fails:** read the alert row error, check host/port/TLS, credentials, and whether the provider blocked the From address. Failed deliveries are not retried on the next tick—fix the config and trigger a fresh down/recover.
+
+Checklist: Mailpit proof locally → real `TOCK_SMTP_*` on the host → verified From → one intentional down/recover → inbox + dashboard agree.
+
 ### Slack
 
 Add a Slack channel and paste an [incoming webhook](https://api.slack.com/messaging/webhooks) URL. Tock posts a text message.
