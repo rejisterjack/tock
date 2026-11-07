@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "https://tock-production-086a.up.railway.app/$1"
+    }
+  ]
+}
