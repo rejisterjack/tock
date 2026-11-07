@@ -193,14 +193,14 @@ Set `TOCK_BASE_URL=https://tock.example.com`.
 
 `TOCK_DEMO=true` seeds three synthetic jobs — one up, one inside its grace window, and one down — and keeps those clocks aligned. Outbound email, Slack, and webhooks are refused. The dashboard can be read without signing in. Creating or editing checks and channels is rejected. Ping URLs answer `OK` and do not change the jobs.
 
-The public demo is [tock.rejisterjack.com](https://tock.rejisterjack.com). That host should run with `TOCK_DEMO=true` only.
+The public demo is [tock.rejisterjack.com](https://tock.rejisterjack.com). That host runs with `TOCK_DEMO=true` only. Real alerting stays on self-hosted Compose.
 
-### Railway
+### Public demo topology
 
-1. Create a Railway project and add Postgres.
-2. Deploy this repo with the Dockerfile. The Go process serves the dashboard. Do not put the dashboard on Vercel.
-3. Set `DATABASE_URL` from the Postgres plugin, `TOCK_BASE_URL=https://tock.rejisterjack.com`, a password, a session secret, an API token, and `TOCK_DEMO=true`. Leave SMTP unset.
-4. Attach the domain `tock.rejisterjack.com`.
+1. Deploy this repo to Railway with the Dockerfile. The Go process serves the dashboard.
+2. Point `DATABASE_URL` at a managed Postgres (Neon works). Do not attach a Railway Postgres volume for the public demo.
+3. Set `TOCK_BASE_URL=https://tock.rejisterjack.com`, `TOCK_TRUST_PROXY=true`, `TOCK_DEMO=true`, a password, a session secret, and an API token. Leave SMTP unset.
+4. Optionally put a Vercel rewrite in front of the Railway URL so the custom domain can live on Vercel DNS. The `edge/` directory holds that proxy (`rootDirectory=edge`); it does not host the Go app.
 
 `TOCK_PING_RETENTION_DAYS=2` is enough for the demo, because the simulator rewrites the sample pings.
 
