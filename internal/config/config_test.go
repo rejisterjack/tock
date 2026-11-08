@@ -32,6 +32,26 @@ func TestParseDefaults(t *testing.T) {
 	}
 }
 
+func TestParsePrefersPortWhenAddrUnset(t *testing.T) {
+	env := validEnv()
+	env["PORT"] = "10000"
+	cfg, err := parse(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Addr != ":10000" {
+		t.Fatalf("addr %q", cfg.Addr)
+	}
+	env["TOCK_ADDR"] = ":8080"
+	cfg, err = parse(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Addr != ":8080" {
+		t.Fatalf("TOCK_ADDR should win, got %q", cfg.Addr)
+	}
+}
+
 func TestParseRequiresSecrets(t *testing.T) {
 	env := validEnv()
 	delete(env, "DATABASE_URL")
