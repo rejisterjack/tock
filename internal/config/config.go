@@ -84,7 +84,12 @@ func Parse(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("TOCK_BASE_URL must be an absolute http or https URL")
 	}
 	if cfg.Addr == "" {
-		cfg.Addr = defaultAddr
+		// Prefer platform PORT (Render, Railway, etc.) when TOCK_ADDR is unset.
+		if port := strings.TrimSpace(getenv("PORT")); port != "" {
+			cfg.Addr = ":" + port
+		} else {
+			cfg.Addr = defaultAddr
+		}
 	}
 	if port := strings.TrimSpace(getenv("TOCK_SMTP_PORT")); port != "" {
 		n, err := strconv.Atoi(port)

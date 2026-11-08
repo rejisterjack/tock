@@ -128,7 +128,11 @@ func runScheduler(ctx context.Context, svc *app.Service, every time.Duration, lo
 func runHealthcheck() int {
 	addr := os.Getenv("TOCK_ADDR")
 	if addr == "" {
-		addr = ":8080"
+		if port := strings.TrimSpace(os.Getenv("PORT")); port != "" {
+			addr = ":" + port
+		} else {
+			addr = ":8080"
+		}
 	}
 	if strings.HasPrefix(addr, ":") {
 		addr = "127.0.0.1" + addr

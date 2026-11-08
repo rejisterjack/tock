@@ -167,7 +167,7 @@ Required:
 
 Optional:
 
-- `TOCK_ADDR` — default `:8080`
+- `TOCK_ADDR` — listen address; default `:8080`, or `:$PORT` when `PORT` is set (Render)
 - `TOCK_SMTP_HOST`, `TOCK_SMTP_PORT` (default 587 when the host is set), `TOCK_SMTP_USER`, `TOCK_SMTP_PASSWORD`, `TOCK_SMTP_FROM`
 - `TOCK_PING_RETENTION_DAYS` — default 90, then old ping rows are deleted
 - `TOCK_DEMO` — `true` or `false`
@@ -197,10 +197,10 @@ The public demo is [tock.rejisterjack.com](https://tock.rejisterjack.com). That 
 
 ### Public demo topology
 
-1. Deploy this repo to Railway with the Dockerfile. The Go process serves the dashboard.
-2. Point `DATABASE_URL` at a managed Postgres (Neon works). Do not attach a Railway Postgres volume for the public demo.
+1. Deploy this repo to **Render** with the Dockerfile (binds `PORT` when `TOCK_ADDR` is unset). The Go process serves the dashboard.
+2. Point `DATABASE_URL` at a managed Postgres (Neon works). Do not attach a Render disk for the public demo.
 3. Set `TOCK_BASE_URL=https://tock.rejisterjack.com`, `TOCK_TRUST_PROXY=true`, `TOCK_DEMO=true`, a password, a session secret, and an API token. Leave SMTP unset.
-4. Optionally put a Vercel rewrite in front of the Railway URL so the custom domain can live on Vercel DNS. The `edge/` directory holds that proxy (`rootDirectory=edge`); it does not host the Go app.
+4. Optionally put a Vercel rewrite in front of the Render URL so the custom domain can live on Vercel DNS. The `edge/` directory holds that proxy (`rootDirectory=edge`); it does not host the Go app.
 
 `TOCK_PING_RETENTION_DAYS=2` is enough for the demo, because the simulator rewrites the sample pings.
 
