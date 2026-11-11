@@ -2,6 +2,7 @@ package check
 
 import (
 	"time"
+	"unicode/utf8"
 
 	"github.com/rejisterjack/tock/internal/model"
 )
@@ -41,7 +42,7 @@ func ValidateName(name string) error {
 	if name == "" {
 		return invalid("name is required")
 	}
-	if len(name) > maxNameLen {
+	if utf8.RuneCountInString(name) > maxNameLen {
 		return invalid("name must be 80 characters or fewer")
 	}
 	for _, r := range name {
@@ -181,16 +182,31 @@ func ParseInterval(value int, unit string) (int, error) {
 	if value < 0 {
 		return 0, invalid("intervals cannot be negative")
 	}
+	factor, ok := intervalFactor(unit)
+	if !ok {
+		return 0, invalid("unknown interval unit")
+	}
+	if factor > 1 && value > maxPeriodSeconds/factor {
+		return 0, invalid("interval is too large")
+	}
+	seconds := value * factor
+	if seconds > maxPeriodSeconds {
+		return 0, invalid("interval is too large")
+	}
+	return seconds, nil
+}
+
+func intervalFactor(unit string) (int, bool) {
 	switch unit {
 	case "seconds":
-		return value, nil
+		return 1, true
 	case "minutes":
-		return value * 60, nil
+		return 60, true
 	case "hours":
-		return value * 3600, nil
+		return 3600, true
 	case "days":
-		return value * 86400, nil
+		return 86400, true
 	default:
-		return 0, invalid("unknown interval unit")
+		return 0, false
 	}
 }

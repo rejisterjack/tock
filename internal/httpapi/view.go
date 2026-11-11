@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"sort"
 	"strings"
 	"time"
 
@@ -107,16 +108,19 @@ func formatHeaders(h map[string]string) string {
 	if len(h) == 0 {
 		return ""
 	}
+	keys := make([]string, 0, len(h))
+	for k := range h {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
 	var b strings.Builder
-	first := true
-	for k, v := range h {
-		if !first {
+	for i, k := range keys {
+		if i > 0 {
 			b.WriteByte('\n')
 		}
-		first = false
 		b.WriteString(k)
 		b.WriteString(": ")
-		b.WriteString(v)
+		b.WriteString(h[k])
 	}
 	return b.String()
 }

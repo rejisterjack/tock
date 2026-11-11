@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -119,7 +120,46 @@ func Parse(getenv func(string) string) (Config, error) {
 		return Config{}, err
 	}
 	cfg.TrustProxy = trust
+	if err := rejectExampleSecrets(cfg); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
+}
+
+// rejectExampleSecrets refuses the passwords shipped in .env.example once the
+// public URL is not a loopback address. Local Compose can still boot from the
+// example file; a deployed host cannot.
+func rejectExampleSecrets(cfg Config) error {
+	if loopbackBase(cfg.BaseURL) {
+		return nil
+	}
+	var bad []string
+	if cfg.AdminPassword == "change-me-now" {
+		bad = append(bad, "TOCK_ADMIN_PASSWORD")
+	}
+	if cfg.SessionSecret == "change-me-session-secret" {
+		bad = append(bad, "TOCK_SESSION_SECRET")
+	}
+	if cfg.APIToken == "change-me-api-token" {
+		bad = append(bad, "TOCK_API_TOKEN")
+	}
+	if len(bad) == 0 {
+		return nil
+	}
+	return fmt.Errorf("replace the example values in %s before using a public TOCK_BASE_URL", strings.Join(bad, ", "))
+}
+
+func loopbackBase(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	host := u.Hostname()
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func parseBool(getenv func(string) string, key string) (bool, error) {

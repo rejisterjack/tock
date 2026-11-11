@@ -95,6 +95,28 @@ func TestSlackAndWebhook(t *testing.T) {
 	}
 }
 
+func TestWebhookDoesNotFollowRedirect(t *testing.T) {
+	var leaked string
+	next := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		leaked = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer next.Close()
+	redir := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, next.URL, http.StatusFound)
+	}))
+	defer redir.Close()
+
+	raw, _ := json.Marshal(WebhookConfig{URL: redir.URL, Headers: map[string]string{"Authorization": "Bearer secret"}})
+	err := (Webhook{}).Send(context.Background(), model.Channel{Kind: model.KindWebhook, Config: raw}, sampleMessage())
+	if err == nil {
+		t.Fatal("expected redirect to fail")
+	}
+	if leaked != "" {
+		t.Fatalf("authorization header followed the redirect: %q", leaked)
+	}
+}
+
 func TestValidateChannel(t *testing.T) {
 	raw, _ := json.Marshal(EmailConfig{To: []string{"ops@example.com"}})
 	if err := Validate(model.KindEmail, raw); err != nil {

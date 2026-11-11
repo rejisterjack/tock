@@ -173,7 +173,11 @@ Optional:
 - `TOCK_DEMO` — `true` or `false`
 - `TOCK_TRUST_PROXY` — `true` only when a reverse proxy sets `X-Forwarded-For`. Otherwise ping history stores the socket address.
 
-Sessions last 7 days. The cookie is `Secure` when `TOCK_BASE_URL` is `https`.
+Sessions last 7 days. The cookie is `Secure` when `TOCK_BASE_URL` is `https`, and responses then include `Strict-Transport-Security`.
+
+The example secrets in `.env.example` (`change-me-now`, `change-me-session-secret`, `change-me-api-token`) are accepted only when `TOCK_BASE_URL` is loopback. Any other host must use your own values.
+
+Eight failed dashboard sign-ins from the same address within 15 minutes are refused until that window passes. The container healthcheck calls `GET /readyz`, so the process is unhealthy when Postgres is down. `GET /healthz` only reports that the process is listening.
 
 Run one app container. A second replica takes a Postgres advisory lock around each tick so a check is not alerted twice.
 
@@ -210,7 +214,7 @@ Postgres holds the checks, ping tokens, and channel settings. Dump it with `pg_d
 
 ## Development
 
-Requires Go 1.27.3.
+Requires Go 1.27.4.
 
 ```sh
 go test ./...

@@ -202,6 +202,83 @@ func TestCSRFAndLogin(t *testing.T) {
 	}
 }
 
+func TestLoginLockoutAndSecurityHeaders(t *testing.T) {
+	ts, _, _ := newTestApp(t)
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}
+	token := loginToken(t, client, ts.URL)
+	for i := 0; i < 8; i++ {
+		res, err := client.PostForm(ts.URL+"/login", map[string][]string{
+			"csrf": {token}, "password": {"wrong-password"},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if res.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("attempt %d status %d", i+1, res.StatusCode)
+		}
+	}
+	res, err := client.PostForm(ts.URL+"/login", map[string][]string{
+		"csrf": {token}, "password": {"change-me-now"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusTooManyRequests || !strings.Contains(string(body), "Too many attempts") {
+		t.Fatalf("lockout %d %s", res.StatusCode, body)
+	}
+	if res.Header.Get("X-Frame-Options") != "DENY" {
+		t.Fatalf("frame options %q", res.Header.Get("X-Frame-Options"))
+	}
+
+	huge := strings.Repeat("a", 70<<10)
+	res, err = client.PostForm(ts.URL+"/login", map[string][]string{
+		"csrf": {token}, "password": {huge},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("oversize form %d", res.StatusCode)
+	}
+}
+
+func TestHSTSOnHTTPS(t *testing.T) {
+	repo := mem.New()
+	svc := &app.Service{Repo: repo, Notifier: nopSender{}, BaseURL: "https://tock.example.com"}
+	cfg := config.Config{
+		BaseURL: "https://tock.example.com", AdminPassword: "a-real-password",
+		SessionSecret: "a-real-session-secret", APIToken: "a-real-api-token-value",
+		SessionLifetime: time.Hour,
+	}
+	api, err := New(cfg, svc, nil, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := httptest.NewRecorder()
+	api.Handler().ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	if res.Header().Get("Strict-Transport-Security") == "" {
+		t.Fatal("missing HSTS")
+	}
+}
+
+func loginToken(t *testing.T, client *http.Client, base string) string {
+	t.Helper()
+	res, err := client.Get(base + "/login")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	return csrfValue(t, string(body))
+}
+
 func TestRemoteIP(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/ping/x", nil)
 	req.RemoteAddr = "10.0.0.1:4321"

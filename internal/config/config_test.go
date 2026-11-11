@@ -96,3 +96,26 @@ func TestParseRequiresSecrets(t *testing.T) {
 		t.Fatal("expected bad trust proxy flag to fail")
 	}
 }
+
+func TestParseRejectsExampleSecretsOnPublicURL(t *testing.T) {
+	env := validEnv()
+	env["TOCK_BASE_URL"] = "https://tock.example.com"
+	if _, err := parse(env); err == nil {
+		t.Fatal("expected example secrets to be rejected")
+	}
+	env["TOCK_BASE_URL"] = "http://127.0.0.1:8080"
+	if _, err := parse(env); err != nil {
+		t.Fatal(err)
+	}
+	env["TOCK_BASE_URL"] = "https://tock.example.com"
+	env["TOCK_ADMIN_PASSWORD"] = "a-real-password"
+	env["TOCK_SESSION_SECRET"] = "a-real-session-secret"
+	env["TOCK_API_TOKEN"] = "a-real-api-token-value"
+	cfg, err := parse(env)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.SecureCookies() {
+		t.Fatal("https base URL should set secure cookies")
+	}
+}

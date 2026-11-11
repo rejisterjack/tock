@@ -1,6 +1,7 @@
 package check
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -39,6 +40,13 @@ func TestValidatePeriod(t *testing.T) {
 	}
 	if err := Validate("bad\nname", 60, 0); err == nil {
 		t.Fatal("expected control character to fail")
+	}
+	name := strings.Repeat("日", 80)
+	if err := Validate(name, 60, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := Validate(name+"x", 60, 0); err == nil {
+		t.Fatal("expected a name over 80 characters to fail")
 	}
 }
 
@@ -147,5 +155,15 @@ func TestFormatAndSplitInterval(t *testing.T) {
 	sec, err := ParseInterval(2, "hours")
 	if err != nil || sec != 7200 {
 		t.Fatalf("%d %v", sec, err)
+	}
+	year, err := ParseInterval(365, "days")
+	if err != nil || year != 365*86400 {
+		t.Fatalf("%d %v", year, err)
+	}
+	if _, err := ParseInterval(366, "days"); err == nil {
+		t.Fatal("expected an interval past 365 days to fail")
+	}
+	if _, err := ParseInterval(1<<40, "minutes"); err == nil {
+		t.Fatal("expected a wrapped interval to fail")
 	}
 }

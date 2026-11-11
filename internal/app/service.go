@@ -225,7 +225,7 @@ func (s *Service) deliverPending(ctx context.Context) error {
 		errText := ""
 		if sendErr != nil {
 			status = model.AlertFailed
-			errText = sendErr.Error()
+			errText = clip(sendErr.Error(), 500)
 			s.log().Error("notify", "err", sendErr, "check_id", row.Check.ID, "channel_id", row.Channel.ID, "event", row.Alert.Kind)
 		}
 		if err := s.Repo.SettleAlert(ctx, row.Alert.ID, status, errText, s.now()); err != nil {

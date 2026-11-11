@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,11 @@ import (
 
 	"github.com/rejisterjack/tock/internal/model"
 )
+
+// errNoRedirect is returned when an operator-configured URL answers with a
+// redirect. Following it would send channel headers, including Authorization,
+// to a different host.
+var errNoRedirect = errors.New("redirects are not followed")
 
 // Slack posts a text payload to an incoming webhook.
 type Slack struct {
@@ -27,14 +33,23 @@ func (s Slack) client() *http.Client {
 	if s.Client != nil {
 		return s.Client
 	}
-	return &http.Client{Timeout: 10 * time.Second}
+	return defaultHTTPClient()
 }
 
 func (w Webhook) client() *http.Client {
 	if w.Client != nil {
 		return w.Client
 	}
-	return &http.Client{Timeout: 10 * time.Second}
+	return defaultHTTPClient()
+}
+
+func defaultHTTPClient() *http.Client {
+	return &http.Client{
+		Timeout: 10 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return errNoRedirect
+		},
+	}
 }
 
 // Send implements Sender.
@@ -77,10 +92,12 @@ func postJSON(ctx context.Context, client *http.Client, endpoint string, body []
 		req.Header.Set(k, v)
 	}
 	res, err := client.Do(req)
+	if res != nil {
+		defer res.Body.Close()
+	}
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
 	_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, 1024))
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return fmt.Errorf("notification returned HTTP %d", res.StatusCode)

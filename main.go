@@ -146,7 +146,9 @@ func runHealthcheck() int {
 		host = "127.0.0.1"
 	}
 	client := &http.Client{Timeout: 2 * time.Second}
-	res, err := client.Get("http://" + net.JoinHostPort(host, port) + "/healthz")
+	// /readyz fails when Postgres is down, so orchestrators do not treat a
+	// process with a dead database as healthy. /healthz only proves the process listens.
+	res, err := client.Get("http://" + net.JoinHostPort(host, port) + "/readyz")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
