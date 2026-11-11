@@ -3,6 +3,7 @@ package notify
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -95,6 +96,28 @@ func TestSlackAndWebhook(t *testing.T) {
 	}
 }
 
+func TestWebhookDoesNotFollowRedirect(t *testing.T) {
+	var leaked string
+	next := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		leaked = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer next.Close()
+	redir := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, next.URL, http.StatusFound)
+	}))
+	defer redir.Close()
+
+	raw, _ := json.Marshal(WebhookConfig{URL: redir.URL, Headers: map[string]string{"Authorization": "Bearer secret"}})
+	err := (Webhook{}).Send(context.Background(), model.Channel{Kind: model.KindWebhook, Config: raw}, sampleMessage())
+	if err == nil {
+		t.Fatal("expected redirect to fail")
+	}
+	if leaked != "" {
+		t.Fatalf("authorization header followed the redirect: %q", leaked)
+	}
+}
+
 func TestValidateChannel(t *testing.T) {
 	raw, _ := json.Marshal(EmailConfig{To: []string{"ops@example.com"}})
 	if err := Validate(model.KindEmail, raw); err != nil {
@@ -107,5 +130,33 @@ func TestValidateChannel(t *testing.T) {
 	raw, _ = json.Marshal(WebhookConfig{URL: "ftp://example.com"})
 	if err := Validate(model.KindWebhook, raw); err == nil {
 		t.Fatal("expected bad url")
+	}
+}
+
+func TestWebhookHeaderLimits(t *testing.T) {
+	headers := map[string]string{}
+	for i := 0; i < 21; i++ {
+		headers[fmt.Sprintf("X-%d", i)] = "v"
+	}
+	cases := []WebhookConfig{
+		{URL: "https://example.com/hook", Headers: headers},
+		{URL: "https://example.com/hook", Headers: map[string]string{"Host": "evil.example"}},
+		{URL: "https://example.com/hook", Headers: map[string]string{"X-Ok": "a\r\nb"}},
+	}
+	for _, cfg := range cases {
+		raw, err := json.Marshal(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := Validate(model.KindWebhook, raw); err == nil {
+			t.Fatalf("expected rejection for %+v", cfg.Headers)
+		}
+	}
+	raw, err := json.Marshal(WebhookConfig{URL: "https://example.com/hook", Headers: map[string]string{"Authorization": "Bearer t"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Validate(model.KindWebhook, raw); err != nil {
+		t.Fatal(err)
 	}
 }

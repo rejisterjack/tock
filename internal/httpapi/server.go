@@ -26,14 +26,22 @@ import (
 
 // Server serves Tock.
 type Server struct {
-	cfg     config.Config
-	svc     *app.Service
-	auth    *auth.Manager
-	log     *slog.Logger
-	tmpl    *template.Template
-	version string
-	now     func() time.Time
+	cfg        config.Config
+	svc        *app.Service
+	auth       *auth.Manager
+	log        *slog.Logger
+	tmpl       *template.Template
+	version    string
+	now        func() time.Time
+	loginFails *failWindow
 }
+
+const (
+	maxFormBytes        = 64 << 10
+	loginFailureLimit   = 8
+	loginFailureWindow  = 15 * time.Minute
+	loginFailureMapSize = 10000
+)
 
 // New parses templates and returns a server.
 func New(cfg config.Config, svc *app.Service, log *slog.Logger, version string) (*Server, error) {
@@ -49,8 +57,9 @@ func New(cfg config.Config, svc *app.Service, log *slog.Logger, version string) 
 	}
 	return &Server{
 		cfg: cfg, svc: svc, log: log, tmpl: tmpl, version: version,
-		auth: auth.New(cfg.AdminPassword, cfg.SessionSecret, cfg.APIToken, cfg.SecureCookies(), cfg.SessionLifetime),
-		now:  time.Now,
+		auth:       auth.New(cfg.AdminPassword, cfg.SessionSecret, cfg.APIToken, cfg.SecureCookies(), cfg.SessionLifetime),
+		now:        time.Now,
+		loginFails: &failWindow{},
 	}, nil
 }
 
@@ -153,7 +162,7 @@ func (s *Server) loginGET(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) loginPOST(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	if err := readForm(w, r); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
 	}
@@ -161,14 +170,20 @@ func (s *Server) loginPOST(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid CSRF token", http.StatusBadRequest)
 		return
 	}
-	if !s.auth.PasswordOK(r.FormValue("password")) {
-		token := ""
-		if c, err := r.Cookie("tock_csrf"); err == nil {
-			token = c.Value
-		}
-		s.render(w, http.StatusUnauthorized, "login", Page{Title: "Sign in", CSRF: token, Error: "Invalid password", Demo: s.cfg.Demo, Version: s.version})
+	ip := remoteIP(r, s.cfg.TrustProxy)
+	if s.loginFails.tooMany(ip, s.clock()) {
+		s.render(w, http.StatusTooManyRequests, "login", Page{
+			Title: "Sign in", CSRF: loginCSRF(r), Demo: s.cfg.Demo, Version: s.version,
+			Error: "Too many attempts. Try again in a few minutes.",
+		})
 		return
 	}
+	if !s.auth.PasswordOK(r.FormValue("password")) {
+		s.loginFails.add(ip, s.clock())
+		s.render(w, http.StatusUnauthorized, "login", Page{Title: "Sign in", CSRF: loginCSRF(r), Error: "Invalid password", Demo: s.cfg.Demo, Version: s.version})
+		return
+	}
+	s.loginFails.reset(ip)
 	if _, err := s.auth.StartSession(w); err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -177,7 +192,7 @@ func (s *Server) loginPOST(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
+	if err := readForm(w, r); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
 	}
@@ -218,7 +233,7 @@ func (s *Server) mutate(w http.ResponseWriter, r *http.Request) (Page, bool) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return Page{}, false
 	}
-	if err := r.ParseForm(); err != nil {
+	if err := readForm(w, r); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return Page{}, false
 	}
@@ -317,6 +332,9 @@ func (s *Server) secure(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self'; img-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+		if s.cfg.SecureCookies() {
+			w.Header().Set("Strict-Transport-Security", "max-age=15552000")
+		}
 		next.ServeHTTP(w, r)
 	})
 }
@@ -347,6 +365,19 @@ func redactPath(p string) string {
 		return "/ping/:token"
 	}
 	return p
+}
+
+func readForm(w http.ResponseWriter, r *http.Request) error {
+	r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
+	return r.ParseForm()
+}
+
+func loginCSRF(r *http.Request) string {
+	c, err := r.Cookie("tock_csrf")
+	if err != nil {
+		return ""
+	}
+	return c.Value
 }
 
 func remoteIP(r *http.Request, trustProxy bool) string {
