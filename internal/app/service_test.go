@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -348,5 +349,140 @@ func TestFailedAlertIsNotRetried(t *testing.T) {
 	alerts, err := svc.ListAlerts(context.Background(), c.ID, 10)
 	if err != nil || len(alerts) != 1 || alerts[0].Status != model.AlertFailed || alerts[0].Error != "smtp down" {
 		t.Fatalf("%+v %v", alerts, err)
+	}
+}
+
+func TestPausedOverdueDoesNotAlert(t *testing.T) {
+	start := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
+	now := start
+	svc, _, sender := newSvc(t, now)
+	svc.Now = func() time.Time { return now }
+	emailChannel(t, svc)
+	c, err := svc.CreateCheck(context.Background(), CheckInput{Name: "backup", PeriodSeconds: 60, GraceSeconds: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Pause(context.Background(), c.ID); err != nil {
+		t.Fatal(err)
+	}
+	now = start.Add(2 * time.Hour)
+	if err := svc.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	got, err := svc.GetCheck(context.Background(), c.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sender.count() != 0 || got.Status != model.StatusNew || !got.Paused {
+		t.Fatalf("status %s paused %v events %d", got.Status, got.Paused, sender.count())
+	}
+}
+
+func TestResumeOverdueDoesNotAlertAgain(t *testing.T) {
+	start := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
+	now := start
+	svc, _, sender := newSvc(t, now)
+	svc.Now = func() time.Time { return now }
+	emailChannel(t, svc)
+	c, err := svc.CreateCheck(context.Background(), CheckInput{Name: "backup", PeriodSeconds: 60, GraceSeconds: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	now = start.Add(2 * time.Minute)
+	if err := svc.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Pause(context.Background(), c.ID); err != nil {
+		t.Fatal(err)
+	}
+	now = start.Add(3 * time.Minute)
+	resumed, err := svc.Resume(context.Background(), c.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if resumed.Status != model.StatusDown || resumed.Paused || sender.count() != 1 {
+		t.Fatalf("status %s paused %v events %d", resumed.Status, resumed.Paused, sender.count())
+	}
+}
+
+func TestDisabledChannelIsSkipped(t *testing.T) {
+	start := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
+	now := start
+	svc, _, sender := newSvc(t, now)
+	svc.Now = func() time.Time { return now }
+	emailChannel(t, svc)
+	off := false
+	raw, _ := json.Marshal(notify.EmailConfig{To: []string{"quiet@example.com"}})
+	if _, err := svc.CreateChannel(context.Background(), ChannelInput{
+		Kind: model.KindEmail, Name: "quiet", Config: raw, Enabled: &off,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	c, err := svc.CreateCheck(context.Background(), CheckInput{Name: "backup", PeriodSeconds: 60, GraceSeconds: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	now = start.Add(2 * time.Minute)
+	if err := svc.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	alerts, err := svc.ListAlerts(context.Background(), c.ID, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sender.count() != 1 || len(alerts) != 1 || alerts[0].ChannelName != "ops" {
+		t.Fatalf("events %d alerts %+v", sender.count(), alerts)
+	}
+}
+
+type longErrSender struct{}
+
+func (longErrSender) Send(context.Context, model.Channel, notify.Message) error {
+	return errors.New(strings.Repeat("x", 800))
+}
+
+func TestAlertErrorIsClipped(t *testing.T) {
+	start := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
+	now := start
+	svc, _, _ := newSvc(t, now)
+	svc.Notifier = longErrSender{}
+	svc.Now = func() time.Time { return now }
+	emailChannel(t, svc)
+	c, err := svc.CreateCheck(context.Background(), CheckInput{Name: "backup", PeriodSeconds: 60, GraceSeconds: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	now = start.Add(2 * time.Minute)
+	if err := svc.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	alerts, err := svc.ListAlerts(context.Background(), c.ID, 10)
+	if err != nil || len(alerts) != 1 || alerts[0].Status != model.AlertFailed || len(alerts[0].Error) != 500 {
+		t.Fatalf("%+v %v", alerts, err)
+	}
+}
+
+func TestHundredChecksTickFinishesInsideThePeriod(t *testing.T) {
+	start := time.Date(2026, 10, 28, 12, 0, 0, 0, time.UTC)
+	svc, _, sender := newSvc(t, start)
+	for i := 0; i < 100; i++ {
+		if _, err := svc.CreateCheck(context.Background(), CheckInput{
+			Name: "job", PeriodSeconds: 86400, GraceSeconds: 0,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	began := time.Now()
+	if err := svc.Tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if elapsed := time.Since(began); elapsed > time.Second {
+		t.Fatalf("tick took %s", elapsed)
+	}
+	if sender.count() != 0 {
+		t.Fatalf("events %d", sender.count())
 	}
 }

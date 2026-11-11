@@ -1,0 +1,16 @@
+name: Smoke
+
+# Manual release check. The pull-request gate stays in ci.yml.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: python3 scripts/smoke.py

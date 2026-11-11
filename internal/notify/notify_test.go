@@ -3,6 +3,7 @@ package notify
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -129,5 +130,33 @@ func TestValidateChannel(t *testing.T) {
 	raw, _ = json.Marshal(WebhookConfig{URL: "ftp://example.com"})
 	if err := Validate(model.KindWebhook, raw); err == nil {
 		t.Fatal("expected bad url")
+	}
+}
+
+func TestWebhookHeaderLimits(t *testing.T) {
+	headers := map[string]string{}
+	for i := 0; i < 21; i++ {
+		headers[fmt.Sprintf("X-%d", i)] = "v"
+	}
+	cases := []WebhookConfig{
+		{URL: "https://example.com/hook", Headers: headers},
+		{URL: "https://example.com/hook", Headers: map[string]string{"Host": "evil.example"}},
+		{URL: "https://example.com/hook", Headers: map[string]string{"X-Ok": "a\r\nb"}},
+	}
+	for _, cfg := range cases {
+		raw, err := json.Marshal(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := Validate(model.KindWebhook, raw); err == nil {
+			t.Fatalf("expected rejection for %+v", cfg.Headers)
+		}
+	}
+	raw, err := json.Marshal(WebhookConfig{URL: "https://example.com/hook", Headers: map[string]string{"Authorization": "Bearer t"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Validate(model.KindWebhook, raw); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -224,6 +224,12 @@ DATABASE_URL=postgres://tock:tock@localhost:5432/tock?sslmode=disable go test -t
 
 `go test ./...` does not need a database. The `integration` tag runs the same down, recovery, and retention transitions against Postgres.
 
+Before a release tag, run the Compose smoke test. It signs in, pings a check, and checks one email and one webhook for down and recovery, then stops Postgres and expects `/readyz` to fail:
+
+```sh
+python3 scripts/smoke.py
+```
+
 Tagged releases publish `ghcr.io/rejisterjack/tock`. The Compose file builds from this directory, so a clone does not need the registry.
 
 ## What this is not

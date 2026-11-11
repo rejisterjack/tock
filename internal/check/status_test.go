@@ -35,6 +35,16 @@ func TestValidatePeriod(t *testing.T) {
 	if err := Validate("backup", 60, -1); err == nil {
 		t.Fatal("expected negative grace to fail")
 	}
+	const year = 365 * 24 * 60 * 60
+	if err := Validate("backup", year, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := Validate("backup", 60, year); err != nil {
+		t.Fatal(err)
+	}
+	if err := Validate("backup", year+1, 0); err == nil {
+		t.Fatal("expected a period past 365 days to fail")
+	}
 	if err := Validate("", 60, 0); err == nil {
 		t.Fatal("expected empty name to fail")
 	}
