@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -17,6 +18,7 @@ import (
 	"github.com/rejisterjack/tock/internal/model"
 	"github.com/rejisterjack/tock/internal/notify"
 	"github.com/rejisterjack/tock/internal/store/mem"
+	"github.com/rejisterjack/tock/web"
 )
 
 type nopSender struct{}
@@ -288,6 +290,19 @@ func TestRemoteIP(t *testing.T) {
 	}
 	if got := remoteIP(req, true); got != "203.0.113.5" {
 		t.Fatalf("proxy %s", got)
+	}
+}
+
+func TestStaticCSSKeepsLongLinesInsideThePage(t *testing.T) {
+	b, err := fs.ReadFile(web.FS, "static/tock.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(b)
+	for _, needle := range []string{"min-width: 0", "overflow-wrap: anywhere"} {
+		if !strings.Contains(css, needle) {
+			t.Fatalf("tock.css missing %s", needle)
+		}
 	}
 }
 
