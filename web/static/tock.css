@@ -97,6 +97,7 @@ label { font-family: var(--mono); font-size: 13px; }
 .check { display: flex; gap: 8px; align-items: center; }
 input, select, textarea {
   width: 100%;
+  min-width: 0;
   background: var(--card);
   border: 1px solid var(--line);
   padding: 8px 10px;
@@ -150,6 +151,7 @@ a.job.status-paused { box-shadow: 3px 3px 0 var(--paused); }
   margin: 0 0 16px;
 }
 .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.split > * { min-width: 0; }
 pre, .mono, .url { font-family: var(--mono); font-size: 14px; }
 pre {
   white-space: pre-wrap;
@@ -161,8 +163,8 @@ pre {
 }
 table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
 th { text-align: left; font-weight: 500; color: var(--muted); }
-td, th { border-top: 1px solid rgba(27, 23, 18, 0.15); padding: 8px 6px 8px 0; vertical-align: top; }
-.abs { display: block; font-size: 11px; }
+td, th { border-top: 1px solid rgba(27, 23, 18, 0.15); padding: 8px 6px 8px 0; vertical-align: top; overflow-wrap: anywhere; }
+.abs { display: block; font-size: 11px; overflow-wrap: anywhere; }
 .clip { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 footer { padding-bottom: 32px; font-family: var(--mono); font-size: 12px; }
