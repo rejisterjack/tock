@@ -76,8 +76,8 @@ A real install is Docker Compose. Tock is not an APM, a log store, or a tracer.
 | WEB-07 | Not found | P1 | PASSED | 0 | 0 | 0 | An unknown check id returns the plain 404 page. |
 | DEMO-01 | Seeded jobs | P0 | PASSED | 0 | 0 | 0 | Demo seeds nightly-backup up, weekly-digest in grace, and db-vacuum down. |
 | DEMO-02 | Edge rewrite | P1 | PASSED | 0 | 0 | 0 | edge/vercel.json rewrites every path to the Render demo URL. |
-| DEVOPS-01 | CI | P0 | PASSED | 0 | 0 | 0 | Push and pull request run race tests, vet, Postgres integration tests, govulncheck, and an image build. |
-| DEVOPS-02 | GHCR image | P0 | PASSED | 0 | 0 | 0 | A v* tag pushes linux/amd64 and linux/arm64 to ghcr.io/rejisterjack/tock. |
+| DEVOPS-01 | CI | P0 | PASSED | 0 | 0 | 0 | A push to main runs race tests, vet, Postgres integration tests, govulncheck, and an image build. |
+| DEVOPS-02 | GHCR image | P0 | PASSED | 0 | 0 | 0 | A push to main whose subject starts with `release: v` pushes linux/amd64 and linux/arm64 to ghcr.io/rejisterjack/tock. |
 | DEVOPS-03 | Compose | P0 | PASSED | 0 | 0 | 0 | Compose starts Postgres 16 and the app on 8080. The smtp profile adds Mailpit. |
 | DEVOPS-04 | Smoke workflow | P1 | PASSED | 0 | 0 | 0 | scripts/smoke.py is manual. It is not part of the pull-request gate. |
 | DEVOPS-05 | Go 1.27.4 | P1 | PASSED | 0 | 0 | 0 | go.mod, CI, and the Dockerfile all say Go 1.27.4. |
@@ -1328,7 +1328,7 @@ A real install is Docker Compose. Tock is not an APM, a log store, or a tracer.
 - **Priority:** P0
 - **Status:** PASSED
 - **Files:** .github/workflows/ci.yml
-- **Expected behavior:** Push and pull_request run go test -race, go vet, the integration tests against Postgres 16, govulncheck, and docker build. Go is pinned to 1.27.4.
+- **Expected behavior:** A push to main runs go test -race, go vet, the integration tests against Postgres 16, govulncheck, and docker build. Go is pinned to 1.27.4.
 - **Acceptance:**
   - [x] The workflow file contains those steps.
   - [x] This step did not run the workflow.
@@ -1347,9 +1347,9 @@ A real install is Docker Compose. Tock is not an APM, a log store, or a tracer.
 - **Priority:** P0
 - **Status:** PASSED
 - **Files:** .github/workflows/ci.yml, Dockerfile
-- **Expected behavior:** A tag starting with refs/tags/v builds linux/amd64 and linux/arm64 and pushes ghcr.io/rejisterjack/tock:{tag} and :latest. The version build arg is the tag name. The runtime image is distroless nonroot.
+- **Expected behavior:** A push to main whose subject starts with `release: v` builds linux/amd64 and linux/arm64 and pushes ghcr.io/rejisterjack/tock:{version} and :latest. The version build arg is that release token. The runtime image is distroless nonroot.
 - **Acceptance:**
-  - [x] The workflow is limited to v* tags.
+  - [x] The image publish runs only on a push to main whose subject starts with `release: v`.
   - [x] The Dockerfile builds with CGO disabled and runs as nonroot.
 - **Test cases:** Read the workflow and Dockerfile. Step 2 checks the published tag only if a release exists.
 - **UI checks:** none
@@ -1385,9 +1385,9 @@ A real install is Docker Compose. Tock is not an APM, a log store, or a tracer.
 - **Priority:** P1
 - **Status:** PASSED
 - **Files:** .github/workflows/smoke.yml, scripts/smoke.py
-- **Expected behavior:** The smoke workflow is workflow_dispatch only. It copies .env.example to .env and runs scripts/smoke.py. The README says that script signs in, pings a check, checks one email and one webhook for down and recovery, then expects /readyz to fail after Postgres stops.
+- **Expected behavior:** The smoke workflow runs only on a push to main. It copies .env.example to .env and runs scripts/smoke.py. The README says that script signs in, pings a check, checks one email and one webhook for down and recovery, then expects /readyz to fail after Postgres stops.
 - **Acceptance:**
-  - [x] It is not triggered by pull_request.
+  - [x] It runs on a push to main, not on a pull request.
   - [x] The script file exists.
 - **Test cases:** Read the workflow. Step 2 runs the script only as the release check it documents.
 - **UI checks:** none

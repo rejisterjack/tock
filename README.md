@@ -224,13 +224,17 @@ DATABASE_URL=postgres://tock:tock@localhost:5432/tock?sslmode=disable go test -t
 
 `go test ./...` does not need a database. The `integration` tag runs the same down, recovery, and retention transitions against Postgres.
 
-Before a release tag, run the Compose smoke test. It signs in, pings a check, and checks one email and one webhook for down and recovery, then stops Postgres and expects `/readyz` to fail:
+Smoke runs on a push to `main`. It signs in, pings a check, and checks one email and one webhook for down and recovery, then stops Postgres and expects `/readyz` to fail:
 
 ```sh
 python3 scripts/smoke.py
 ```
 
-Tagged releases publish `ghcr.io/rejisterjack/tock`. The Compose file builds from this directory, so a clone does not need the registry.
+## CI/CD
+
+Workflows run only on a push to `main`. A pull request, any other branch, a tag push, a schedule, and a manual run do not start CI or CD. The only deploy target is production. Connect Render and the Vercel rewrite to `main` and leave preview and pull-request deploys off.
+
+A production image publish runs on that same push when the commit subject starts with `release: v` and a version (`release: v1.2.3`). That publish pushes `ghcr.io/rejisterjack/tock:<version>` and `:latest`. Any other push to `main` runs checks only, including the smoke script. Pushing a tag does not start a workflow. The Compose file builds from this directory, so a clone does not need the registry.
 
 ## What this is not
 

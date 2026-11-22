@@ -1,8 +1,9 @@
 name: Smoke
 
-# Manual release check. The pull-request gate stays in ci.yml.
+# Runs only on a push to main.
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
